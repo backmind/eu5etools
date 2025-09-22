@@ -22,7 +22,8 @@ LABEL org.opencontainers.image.created=${BUILD_DATE} \
       org.opencontainers.image.description="5etools with auto-updated assets and source code combined"
 
 # Clone source code in temporary directory
-RUN git clone --depth=1 --branch=${SRC_BRANCH} ${SRC_REPO} /tmp/src
+WORKDIR /tmp/src
+RUN git clone --depth=1 --branch=${SRC_BRANCH} ${SRC_REPO} .
 
 # Copy source code over base content
 # (keeping the img/ directory that's already in base image)
@@ -32,7 +33,6 @@ RUN cp -r . /var/www/localhost/htdocs/ && \
 # Return to original working directory
 WORKDIR /var/www/localhost/htdocs
 
-# CMD is already defined in base image (lighttpd)
 # But we can verify everything is in place
 RUN ls -la /var/www/localhost/htdocs/ && \
     ls -la /var/www/localhost/htdocs/img/ | head -5
