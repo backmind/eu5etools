@@ -1,0 +1,36 @@
+services:
+  fivetools:
+    image: ghcr.io/TU-USUARIO/eu5etools:latest
+    container_name: fivetools
+    restart: unless-stopped
+    # <<: [*security-opts, *resource-medium]  # Your existing configuration
+    environment:
+      # <<: *common-vars  # Your existing configuration
+      NODE_ENV: production
+    networks:
+      - games_network
+      - proxy_network
+    ports:
+      - "8081:80"
+    labels:
+      # Labels for Watchtower (optional)
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Watchtower for automatic updates (optional)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600  # Check every hour
+      - WATCHTOWER_LABEL_ENABLE=true   # Only containers with label
+    command: --interval 3600 --cleanup
+
+networks:
+  games_network:
+    external: true
+  proxy_network:
+    external: true

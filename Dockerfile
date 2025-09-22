@@ -1,0 +1,37 @@
+FROM ghcr.io/5etools-mirror-3/5etools-img:latest
+
+# Install git to clone source code
+RUN apk add --no-cache git
+
+# Build variables for flexibility
+ARG SRC_REPO=https://github.com/5etools-mirror-3/5etools-src.git
+ARG SRC_BRANCH=main
+
+# Build information
+ARG BUILD_DATE
+ARG BUILD_VERSION
+ARG VCS_REF
+
+# Metadata labels
+LABEL org.opencontainers.image.created=${BUILD_DATE} \
+      org.opencontainers.image.version=${BUILD_VERSION} \
+      org.opencontainers.image.revision=${VCS_REF} \
+      org.opencontainers.image.title="Ever Updated 5etools" \
+      org.opencontainers.image.description="5etools with auto-updated assets and source code combined"
+
+# Clone source code in temporary directory
+WORKDIR /tmp/src
+RUN git clone --depth=1 --branch=${SRC_BRANCH} ${SRC_REPO} .
+
+# Copy source code over base content
+# (keeping the img/ directory that's already in base image)
+RUN cp -r . /var/www/localhost/htdocs/ && \
+    rm -rf /tmp/src
+
+# Return to original working directory
+WORKDIR /var/www/localhost/htdocs
+
+# CMD is already defined in base image (lighttpd)
+# But we can verify everything is in place
+RUN ls -la /var/www/localhost/htdocs/ && \
+    ls -la /var/www/localhost/htdocs/img/ | head -5
