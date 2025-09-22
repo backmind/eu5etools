@@ -8,10 +8,10 @@ on:
   # Manual trigger
   workflow_dispatch:
     inputs:
-      base_url:
-        description: 'Base URL for repositories (without trailing slash)'
+      src_repo:
+        description: 'Source repository URL'
         required: false
-        default: 'https://github.com/5etools-mirror-3'
+        default: 'https://github.com/5etools-mirror-3/5etools-src.git'
       src_branch:
         description: 'Source branch'
         required: false
@@ -40,49 +40,22 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
       src_commit: ${{ steps.check.outputs.src_commit }}
       img_commit: ${{ steps.check.outputs.img_commit }}
-      src_repo: ${{ steps.check.outputs.src_repo }}
-      img_registry: ${{ steps.check.outputs.img_registry }}
     steps:
       - name: Check upstream changes
         id: check
         run: |
-          # Base URL for repositories
-          BASE_URL="${{ github.event.inputs.base_url || 'https://github.com/5etools-mirror-3' }}"
+          # Upstream repository URLs
+          SRC_REPO="${{ github.event.inputs.src_repo || 'https://github.com/5etools-mirror-3/5etools-src' }}"
+          IMG_REPO="https://github.com/5etools-mirror-3/5etools-img"
           
-          # Construct repo URLs
-          SRC_REPO="$BASE_URL/5etools-src.git"
-          IMG_REPO="$BASE_URL/5etools-img"
+          # Get latest commits
+          SRC_COMMIT=$(curl -s "https://api.github.com/repos/5etools-mirror-3/5etools-src/commits/main" | jq -r '.sha[0:7]')
+          IMG_COMMIT=$(curl -s "https://api.github.com/repos/5etools-mirror-3/5etools-img/commits/main" | jq -r '.sha[0:7]')
           
-          # Extract registry path for Docker FROM
-          if [[ "$BASE_URL" == *"github.com"* ]]; then
-            # GitHub → GHCR
-            GITHUB_USER=$(echo $BASE_URL | sed 's|https://github.com/||')
-            IMG_REGISTRY="ghcr.io/$GITHUB_USER/5etools-img"
-          else
-            # Non-GitHub, assume they host their own registry
-            IMG_REGISTRY="$BASE_URL/5etools-img"
-          fi
-          
-          # Extract API path for GitHub (if it's GitHub)
-          if [[ "$BASE_URL" == *"github.com"* ]]; then
-            API_BASE=$(echo $BASE_URL | sed 's|https://github.com/|https://api.github.com/repos/|')
-            SRC_COMMIT=$(curl -s "$API_BASE/5etools-src/commits/main" | jq -r '.sha[0:7]')
-            IMG_COMMIT=$(curl -s "$API_BASE/5etools-img/commits/main" | jq -r '.sha[0:7]')
-          else
-            # For non-GitHub (GitLab, etc.), use timestamp as fallback
-            TIMESTAMP=$(date -u +'%Y%m%d-%H%M')
-            SRC_COMMIT="src-$TIMESTAMP"
-            IMG_COMMIT="img-$TIMESTAMP"
-            echo "Non-GitHub repo detected, using timestamp-based tags"
-          fi
-          
-          echo "src_repo=$SRC_REPO" >> $GITHUB_OUTPUT
-          echo "img_repo=$IMG_REPO" >> $GITHUB_OUTPUT
-          echo "img_registry=$IMG_REGISTRY" >> $GITHUB_OUTPUT
           echo "src_commit=$SRC_COMMIT" >> $GITHUB_OUTPUT
           echo "img_commit=$IMG_COMMIT" >> $GITHUB_OUTPUT
           
-          # Combined tag with both commits
+          # Search if image already exists with these commits
           TAG="${SRC_COMMIT}-${IMG_COMMIT}"
           
           # Check if image already exists in registry
@@ -90,7 +63,7 @@ jobs:
             echo "Image with tag $TAG already exists"
             SHOULD_BUILD="false"
           else
-            echo "Changes detected, need to build"
+            echo "New changes detected, need to build"
             SHOULD_BUILD="true"
           fi
           
@@ -150,9 +123,7 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.build_date }}
             BUILD_VERSION=${{ steps.meta.outputs.timestamp_tag }}
             VCS_REF=${{ github.sha }}
-            IMG_REGISTRY=${{ needs.check-changes.outputs.img_registry }}
-            IMG_TAG=latest
-            SRC_REPO=${{ needs.check-changes.outputs.src_repo }}
+            SRC_REPO=${{ github.event.inputs.src_repo || 'https://github.com/5etools-mirror-3/5etools-src.git' }}
             SRC_BRANCH=${{ github.event.inputs.src_branch || 'main' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -160,7 +131,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.commit_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          no-cache: ${{ needs.check-changes.outputs.should_build == 'true' }}
 
       - name: Update repository description
         run: |

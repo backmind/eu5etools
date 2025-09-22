@@ -1,13 +1,11 @@
-# Build variables for flexibility
-ARG IMG_REGISTRY=ghcr.io/5etools-mirror-3/5etools-img
-ARG IMG_TAG=latest
-ARG SRC_REPO=https://github.com/5etools-mirror-3/5etools-src.git
-ARG SRC_BRANCH=main
-
-FROM ${IMG_REGISTRY}:${IMG_TAG}
+FROM ghcr.io/5etools-mirror-3/5etools-img:latest
 
 # Install git to clone source code
 RUN apk add --no-cache git
+
+# Build variables for flexibility
+ARG SRC_REPO=https://github.com/5etools-mirror-3/5etools-src.git
+ARG SRC_BRANCH=main
 
 # Build information
 ARG BUILD_DATE
@@ -33,6 +31,7 @@ RUN cp -r . /var/www/localhost/htdocs/ && \
 # Return to original working directory
 WORKDIR /var/www/localhost/htdocs
 
+# CMD is already defined in base image (lighttpd)
 # But we can verify everything is in place
 RUN ls -la /var/www/localhost/htdocs/ && \
     ls -la /var/www/localhost/htdocs/img/ | head -5
