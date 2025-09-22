@@ -40,6 +40,8 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
       src_commit: ${{ steps.check.outputs.src_commit }}
       img_commit: ${{ steps.check.outputs.img_commit }}
+      src_repo: ${{ steps.check.outputs.src_repo }}
+      img_registry: ${{ steps.check.outputs.img_registry }}
     steps:
       - name: Check upstream changes
         id: check
