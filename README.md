@@ -46,10 +46,6 @@ services:
 
 ## Customization
 
-Want to track a different mirror? Use workflow_dispatch on the Actions tab:
-- `src_repo`: https://github.com/5etools-mirror-4/5etools-src.git
-- `force_build`: true
-
 Need a specific version? Pin to a timestamped tag:
 ```yaml
 image: ghcr.io/backmind/eu5etools:20250922-1430-abc123f-def456g
