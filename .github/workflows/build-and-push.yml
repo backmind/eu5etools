@@ -51,6 +51,16 @@ jobs:
           SRC_REPO="$BASE_URL/5etools-src.git"
           IMG_REPO="$BASE_URL/5etools-img"
           
+          # Extract registry path for Docker FROM
+          if [[ "$BASE_URL" == *"github.com"* ]]; then
+            # GitHub → GHCR
+            GITHUB_USER=$(echo $BASE_URL | sed 's|https://github.com/||')
+            IMG_REGISTRY="ghcr.io/$GITHUB_USER/5etools-img"
+          else
+            # Non-GitHub, assume they host their own registry
+            IMG_REGISTRY="$BASE_URL/5etools-img"
+          fi
+          
           # Extract API path for GitHub (if it's GitHub)
           if [[ "$BASE_URL" == *"github.com"* ]]; then
             API_BASE=$(echo $BASE_URL | sed 's|https://github.com/|https://api.github.com/repos/|')
@@ -66,6 +76,7 @@ jobs:
           
           echo "src_repo=$SRC_REPO" >> $GITHUB_OUTPUT
           echo "img_repo=$IMG_REPO" >> $GITHUB_OUTPUT
+          echo "img_registry=$IMG_REGISTRY" >> $GITHUB_OUTPUT
           echo "src_commit=$SRC_COMMIT" >> $GITHUB_OUTPUT
           echo "img_commit=$IMG_COMMIT" >> $GITHUB_OUTPUT
           
@@ -137,6 +148,8 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.build_date }}
             BUILD_VERSION=${{ steps.meta.outputs.timestamp_tag }}
             VCS_REF=${{ github.sha }}
+            IMG_REGISTRY=${{ needs.check-changes.outputs.img_registry }}
+            IMG_TAG=latest
             SRC_REPO=${{ needs.check-changes.outputs.src_repo }}
             SRC_BRANCH=${{ github.event.inputs.src_branch || 'main' }}
           tags: |
