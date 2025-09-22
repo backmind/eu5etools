@@ -22,8 +22,7 @@ LABEL org.opencontainers.image.created=${BUILD_DATE} \
       org.opencontainers.image.description="5etools with auto-updated assets and source code combined"
 
 # Clone source code in temporary directory
-WORKDIR /tmp/src
-RUN git clone --depth=1 --branch=${SRC_BRANCH} ${SRC_REPO} .
+RUN git clone --depth=1 --branch=${SRC_BRANCH} ${SRC_REPO} /tmp/src
 
 # Copy source code over base content
 # (keeping the img/ directory that's already in base image)
