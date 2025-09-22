@@ -7,6 +7,7 @@ ARG SRC_BRANCH=main
 FROM ${IMG_REGISTRY}:${IMG_TAG}
 
 # Install git to clone source code
+RUN apk add --no-cache git
 
 # Build information
 ARG BUILD_DATE
