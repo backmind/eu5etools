@@ -8,10 +8,10 @@ on:
   # Manual trigger
   workflow_dispatch:
     inputs:
-      src_repo:
-        description: 'Source repository URL'
+      base_url:
+        description: 'Base URL for repositories (without trailing slash)'
         required: false
-        default: 'https://github.com/5etools-mirror-3/5etools-src.git'
+        default: 'https://github.com/5etools-mirror-3'
       src_branch:
         description: 'Source branch'
         required: false
@@ -44,18 +44,32 @@ jobs:
       - name: Check upstream changes
         id: check
         run: |
-          # Upstream repository URLs
-          SRC_REPO="${{ github.event.inputs.src_repo || 'https://github.com/5etools-mirror-3/5etools-src' }}"
-          IMG_REPO="https://github.com/5etools-mirror-3/5etools-img"
+          # Base URL for repositories
+          BASE_URL="${{ github.event.inputs.base_url || 'https://github.com/5etools-mirror-3' }}"
           
-          # Get latest commits
-          SRC_COMMIT=$(curl -s "https://api.github.com/repos/5etools-mirror-3/5etools-src/commits/main" | jq -r '.sha[0:7]')
-          IMG_COMMIT=$(curl -s "https://api.github.com/repos/5etools-mirror-3/5etools-img/commits/main" | jq -r '.sha[0:7]')
+          # Construct repo URLs
+          SRC_REPO="$BASE_URL/5etools-src.git"
+          IMG_REPO="$BASE_URL/5etools-img"
           
+          # Extract API path for GitHub (if it's GitHub)
+          if [[ "$BASE_URL" == *"github.com"* ]]; then
+            API_BASE=$(echo $BASE_URL | sed 's|https://github.com/|https://api.github.com/repos/|')
+            SRC_COMMIT=$(curl -s "$API_BASE/5etools-src/commits/main" | jq -r '.sha[0:7]')
+            IMG_COMMIT=$(curl -s "$API_BASE/5etools-img/commits/main" | jq -r '.sha[0:7]')
+          else
+            # For non-GitHub (GitLab, etc.), use timestamp as fallback
+            TIMESTAMP=$(date -u +'%Y%m%d-%H%M')
+            SRC_COMMIT="src-$TIMESTAMP"
+            IMG_COMMIT="img-$TIMESTAMP"
+            echo "Non-GitHub repo detected, using timestamp-based tags"
+          fi
+          
+          echo "src_repo=$SRC_REPO" >> $GITHUB_OUTPUT
+          echo "img_repo=$IMG_REPO" >> $GITHUB_OUTPUT
           echo "src_commit=$SRC_COMMIT" >> $GITHUB_OUTPUT
           echo "img_commit=$IMG_COMMIT" >> $GITHUB_OUTPUT
           
-          # Search if image already exists with these commits
+          # Combined tag with both commits
           TAG="${SRC_COMMIT}-${IMG_COMMIT}"
           
           # Check if image already exists in registry
@@ -63,7 +77,7 @@ jobs:
             echo "Image with tag $TAG already exists"
             SHOULD_BUILD="false"
           else
-            echo "New changes detected, need to build"
+            echo "Changes detected, need to build"
             SHOULD_BUILD="true"
           fi
           
@@ -123,7 +137,7 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.build_date }}
             BUILD_VERSION=${{ steps.meta.outputs.timestamp_tag }}
             VCS_REF=${{ github.sha }}
-            SRC_REPO=${{ github.event.inputs.src_repo || 'https://github.com/5etools-mirror-3/5etools-src.git' }}
+            SRC_REPO=${{ needs.check-changes.outputs.src_repo }}
             SRC_BRANCH=${{ github.event.inputs.src_branch || 'main' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -131,6 +145,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.commit_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: ${{ needs.check-changes.outputs.should_build == 'true' }}
 
       - name: Update repository description
         run: |
