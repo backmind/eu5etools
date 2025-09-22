@@ -1,11 +1,12 @@
-FROM ghcr.io/5etools-mirror-3/5etools-img:latest
-
-# Install git to clone source code
-RUN apk add --no-cache git
-
 # Build variables for flexibility
+ARG IMG_REGISTRY=ghcr.io/5etools-mirror-3/5etools-img
+ARG IMG_TAG=latest
 ARG SRC_REPO=https://github.com/5etools-mirror-3/5etools-src.git
 ARG SRC_BRANCH=main
+
+FROM ${IMG_REGISTRY}:${IMG_TAG}
+
+# Install git to clone source code
 
 # Build information
 ARG BUILD_DATE
